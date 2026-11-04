@@ -16,7 +16,11 @@ async function sb() {
   return _sb;
 }
 
+// Đường dẫn bắt đầu bằng "assets/" hoặc "http" là ảnh nằm sẵn trên website (vd. poster mẫu),
+// còn lại là file trong Supabase Storage.
+const isStatic = path => /^(assets\/|https?:)/.test(path);
 function publicUrl(client, path) {
+  if (isStatic(path)) return path;
   return client.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
@@ -50,7 +54,8 @@ const supa = {
   async remove(id) {
     const c = await sb();
     const { data } = await c.from('posters').select('wall_path, full_path').eq('id', id).single();
-    if (data) await c.storage.from(BUCKET).remove([data.wall_path, data.full_path]);
+    const files = data ? [data.wall_path, data.full_path].filter(p => !isStatic(p)) : [];
+    if (files.length) await c.storage.from(BUCKET).remove(files);
     const { error } = await c.from('posters').delete().eq('id', id);
     if (error) throw error;
   },
