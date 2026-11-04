@@ -1,0 +1,135 @@
+:root {
+  --surround: #1d1d1d;
+  --ink: #f4f1ea;
+  --glow: rgba(255, 248, 225, .95);
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%;
+  background: var(--surround);
+  color: var(--ink);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  overscroll-behavior: none;
+}
+body { overflow: hidden; }
+
+/* Sân khấu luôn dọc. Trên điện thoại = toàn màn hình, trên desktop = khung 9:16 ở giữa. */
+#stage {
+  position: relative;
+  height: 100vh; height: 100dvh;
+  width: min(100vw, calc(100dvh * 9 / 16));
+  margin: 0 auto;
+  overflow: hidden;
+  background: #bdbdbd;
+  touch-action: none;
+  user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: default;
+}
+@media (min-aspect-ratio: 10/16) {
+  #stage { box-shadow: 0 0 0 1px #000, 0 30px 80px rgba(0,0,0,.5); }
+}
+
+#wall {
+  position: absolute; inset: 0;
+  background: url(assets/wall/concrete.jpg) repeat-x 0 0 / auto 100%;
+  will-change: background-position;
+}
+#world { position: absolute; inset: 0; will-change: transform; }
+
+.poster {
+  position: absolute;
+  display: block;
+  background: #222;
+  box-shadow: 0 2px 4px rgba(0,0,0,.25), 0 10px 24px rgba(0,0,0,.18);
+  transition: box-shadow .25s ease, transform .25s ease;
+}
+.poster img {
+  width: 100%; height: 100%; display: block;
+  object-fit: cover;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+/* Viền highlight nhẹ khi nhân vật đứng giữa poster */
+.poster.active {
+  cursor: pointer;
+  box-shadow:
+    0 0 0 3px var(--glow),
+    0 0 18px 4px rgba(255, 240, 200, .55),
+    0 10px 24px rgba(0,0,0,.2);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+@keyframes breathe {
+  50% { box-shadow: 0 0 0 3px var(--glow), 0 0 28px 8px rgba(255, 240, 200, .75), 0 10px 24px rgba(0,0,0,.2); }
+}
+
+#hero {
+  position: absolute; bottom: 0; left: 50%;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+#hero img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  visibility: hidden;
+}
+#hero img.on { visibility: visible; }
+
+#hud {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between;
+  padding: max(14px, env(safe-area-inset-top)) 16px 0;
+  font-size: 11px; letter-spacing: .18em;
+  color: #2a2a2a; pointer-events: none;
+}
+#hint {
+  position: absolute; left: 0; right: 0; top: 13%;
+  margin: 0; text-align: center;
+  font: 500 13px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: #222;
+  pointer-events: none;
+  transition: opacity .6s ease;
+}
+#hint.gone { opacity: 0; }
+#hint kbd {
+  font: inherit; padding: 1px 6px; border: 1px solid #333; border-radius: 4px;
+}
+#empty {
+  position: absolute; left: 16px; right: 16px; top: 35%;
+  text-align: center; color: #222; font-size: 14px;
+}
+#empty a { color: #000; }
+#loading {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background: var(--surround); font-size: 12px; letter-spacing: .2em;
+  transition: opacity .4s ease;
+}
+#loading.done { opacity: 0; pointer-events: none; }
+
+/* Xem poster toàn màn hình */
+#viewer {
+  position: fixed; inset: 0; z-index: 10;
+  background: rgba(10,10,10,.96);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: max(56px, env(safe-area-inset-top)) 12px max(20px, env(safe-area-inset-bottom));
+  animation: fade .2s ease;
+}
+#viewer[hidden] { display: none; }
+#viewer img {
+  max-width: 100%; max-height: calc(100% - 28px);
+  object-fit: contain; display: block;
+  touch-action: pinch-zoom;
+}
+#viewer-title { margin: 12px 0 0; font-size: 12px; letter-spacing: .12em; opacity: .7; }
+#close {
+  position: absolute; top: max(10px, env(safe-area-inset-top)); right: 10px;
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 0; background: rgba(255,255,255,.12); color: #fff;
+  display: grid; place-items: center; cursor: pointer;
+}
+#close:hover, #close:focus-visible { background: rgba(255,255,255,.24); outline: none; }
+@keyframes fade { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .poster.active { animation: none; }
+}

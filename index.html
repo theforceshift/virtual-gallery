@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1d1d1d">
+  <title>Virtual Gallery</title>
+  <link rel="preload" as="image" href="assets/wall/concrete.jpg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="stage" aria-label="Phòng trưng bày poster">
+    <div id="wall"></div>
+    <div id="world"></div>
+
+    <div id="hero" aria-hidden="true"></div>
+
+    <header id="hud">
+      <span class="brand">VIRTUAL GALLERY</span>
+      <span id="counter"></span>
+    </header>
+    <p id="hint"></p>
+    <p id="empty" hidden>Chưa có poster nào. Vào <a href="admin.html">trang quản trị</a> để thêm.</p>
+    <div id="loading">Đang tải…</div>
+  </main>
+
+  <div id="viewer" hidden role="dialog" aria-modal="true" aria-label="Xem poster">
+    <button id="close" aria-label="Đóng">
+      <svg viewBox="0 0 24 24" width="22" height="22"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+    </button>
+    <img id="viewer-img" alt="">
+    <p id="viewer-title"></p>
+  </div>
+
+  <script type="module" src="gallery.js"></script>
+</body>
+</html>

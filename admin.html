@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quản trị poster</title>
+  <style>
+    :root { --bg:#f4f2ee; --card:#fff; --ink:#1b1b1b; --muted:#6b6b6b; --line:#dedad2; --accent:#1b1b1b; --danger:#b3261e; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#161616; --card:#212121; --ink:#efece6; --muted:#9a968f; --line:#333; --accent:#efece6; --danger:#ff8a80; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 20px 16px 60px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    h1 { font: 600 13px/1 ui-monospace, Menlo, monospace; letter-spacing:.18em; margin:0; }
+    a { color: inherit; }
+    .badge { font-size:13px; background:#ffe9a8; color:#4a3b00; padding:10px 12px; border-radius:8px; margin-bottom:16px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+    button, .btn { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:8px; padding:7px 12px; cursor:pointer; }
+    button.primary { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+    button:disabled { opacity:.4; cursor:default; }
+    input[type=text], input[type=email], input[type=password] { font:inherit; width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); }
+    label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+    #drop { border:2px dashed var(--line); border-radius:12px; padding:28px 16px; text-align:center; color:var(--muted); cursor:pointer; }
+    #drop.over { border-color:var(--ink); color:var(--ink); }
+    #status { font-size:13px; color:var(--muted); min-height:20px; margin-top:10px; }
+    ul { list-style:none; margin:0; padding:0; }
+    li.row { display:grid; grid-template-columns: 56px 1fr auto; gap:12px; align-items:center; padding:10px 0; border-top:1px solid var(--line); }
+    li.row:first-child { border-top:0; }
+    li.row img { width:56px; height:70px; object-fit:cover; border-radius:4px; background:#ccc; }
+    li.row.hidden img { opacity:.35; }
+    .meta { min-width:0; }
+    .meta .sub { font-size:12px; color:var(--muted); margin-top:4px; display:flex; align-items:center; gap:6px; }
+    .acts { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+    .acts button { padding:6px 9px; }
+    .del { color:var(--danger); }
+    @media (max-width: 520px) {
+      li.row { grid-template-columns: 48px 1fr; }
+      li.row img { width:48px; height:60px; }
+      .acts { grid-column: 1 / -1; justify-content:flex-start; }
+    }
+    [hidden] { display:none !important; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>VIRTUAL GALLERY · ADMIN</h1>
+    <div><a href="index.html">Xem gallery ↗</a> <button id="logout" hidden>Đăng xuất</button></div>
+  </header>
+
+  <div id="demo" class="badge" hidden>
+    Chế độ demo: poster chỉ lưu trong trình duyệt này. Khi nối Supabase (điền <code>config.js</code>) dữ liệu sẽ lưu thật và ai cũng thấy.
+    <button id="reset" style="margin-left:6px">Khôi phục 6 poster mẫu</button>
+  </div>
+
+  <form id="login" class="card" hidden>
+    <strong>Đăng nhập</strong>
+    <label for="email">Email</label><input id="email" type="email" autocomplete="username" required>
+    <label for="pw">Mật khẩu</label><input id="pw" type="password" autocomplete="current-password" required>
+    <p><button class="primary" type="submit">Đăng nhập</button> <span id="loginErr" style="color:var(--danger)"></span></p>
+  </form>
+
+  <section id="app" hidden>
+    <div class="card">
+      <div id="drop" tabindex="0" role="button">
+        <strong>Kéo thả ảnh poster vào đây</strong><br>hoặc bấm để chọn (chọn được nhiều ảnh)
+      </div>
+      <input id="file" type="file" accept="image/*" multiple hidden>
+      <div id="status"></div>
+    </div>
+    <div class="card">
+      <strong>Poster trên tường</strong> <span id="count" style="color:var(--muted)"></span>
+      <p style="margin:4px 0 8px;font-size:13px;color:var(--muted)">Thứ tự từ trên xuống = thứ tự từ trái sang phải trên phố.</p>
+      <ul id="list"></ul>
+    </div>
+  </section>
+</div>
+
+<script type="module">
+import { store, isDemo, makeVersions } from './data.js';
+
+const $ = id => document.getElementById(id);
+let rows = [];
+
+async function boot() {
+  $('demo').hidden = !isDemo;
+  const s = await store.session();
+  if (!s) { $('login').hidden = false; return; }
+  $('login').hidden = true; $('app').hidden = false; $('logout').hidden = isDemo;
+  await refresh();
+}
+
+$('login').addEventListener('submit', async e => {
+  e.preventDefault(); $('loginErr').textContent = '';
+  try { await store.signIn($('email').value, $('pw').value); boot(); }
+  catch (err) { $('loginErr').textContent = 'Sai email hoặc mật khẩu.'; }
+});
+$('logout').onclick = async () => { await store.signOut(); location.reload(); };
+// Xác nhận bằng 2 lần bấm (không dùng confirm() để chạy được ở mọi nơi)
+function twoStep(btn, label, action) {
+  let armed = false, t;
+  btn.addEventListener('click', async () => {
+    if (!armed) { armed = true; const old = btn.textContent; btn.textContent = label; t = setTimeout(() => { armed = false; btn.textContent = old; }, 3000); return; }
+    clearTimeout(t); await action();
+  });
+}
+twoStep($('reset'), 'Bấm lần nữa để khôi phục', async () => { await store.reset(); location.reload(); });
+
+async function refresh() {
+  rows = await store.list({ includeHidden: true });
+  $('count').textContent = `(${rows.length})`;
+  const ul = $('list'); ul.textContent = '';
+  rows.forEach((r, i) => {
+    const li = document.createElement('li');
+    li.className = 'row' + (r.published ? '' : ' hidden');
+    li.innerHTML = `
+      <img alt="">
+      <div class="meta">
+        <input type="text" aria-label="Tên poster">
+        <div class="sub"><label style="margin:0;display:flex;gap:6px;align-items:center;color:inherit"><input type="checkbox"> Hiện trên tường</label></div>
+      </div>
+      <div class="acts">
+        <button data-a="up" title="Lên" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button data-a="down" title="Xuống" ${i === rows.length - 1 ? 'disabled' : ''}>↓</button>
+        <button data-a="del" class="del">Xóa</button>
+      </div>`;
+    li.querySelector('img').src = r.wall;
+    const t = li.querySelector('input[type=text]');
+    t.value = r.title || '';
+    t.addEventListener('change', () => store.update(r.id, { title: t.value.trim() }).then(() => flash('Đã lưu tên.')));
+    const cb = li.querySelector('input[type=checkbox]');
+    cb.checked = !!r.published;
+    cb.addEventListener('change', async () => { await store.update(r.id, { published: cb.checked }); refresh(); });
+    li.querySelector('[data-a=up]').onclick = () => move(i, -1);
+    li.querySelector('[data-a=down]').onclick = () => move(i, 1);
+    twoStep(li.querySelector('[data-a=del]'), 'Chắc chắn xóa?', async () => { await store.remove(r.id); flash('Đã xóa.'); refresh(); });
+    ul.appendChild(li);
+  });
+}
+
+async function move(i, d) {
+  const ids = rows.map(r => r.id);
+  [ids[i], ids[i + d]] = [ids[i + d], ids[i]];
+  await store.reorder(ids); refresh();
+}
+
+function flash(msg) { $('status').textContent = msg; }
+
+async function upload(files) {
+  files = [...files].filter(f => f.type.startsWith('image/'));
+  for (let k = 0; k < files.length; k++) {
+    const f = files[k];
+    flash(`Đang xử lý ${k + 1}/${files.length}: ${f.name}…`);
+    try {
+      const v = await makeVersions(f);
+      await store.add({ title: f.name.replace(/\.[^.]+$/, ''), ...v });
+    } catch (err) {
+      console.error(err); flash(`Lỗi với ${f.name}: ${err.message || err}`); return;
+    }
+  }
+  flash(files.length ? `Đã thêm ${files.length} poster.` : 'Không có file ảnh nào.');
+  refresh();
+}
+
+const drop = $('drop');
+drop.onclick = () => $('file').click();
+drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } };
+$('file').onchange = e => { upload(e.target.files); e.target.value = ''; };
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); upload(e.dataTransfer.files); });
+
+boot().catch(err => { console.error(err); flash('Không kết nối được dữ liệu: ' + (err.message || err)); $('app').hidden = false; });
+</script>
+</body>
+</html>
