@@ -11,7 +11,7 @@ export const isDemo = !(SUPABASE_URL && SUPABASE_ANON_KEY);
 let _sb = null;
 async function sb() {
   if (_sb) return _sb;
-  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
+  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm');
   _sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   return _sb;
 }
